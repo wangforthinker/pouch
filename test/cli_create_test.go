@@ -42,6 +42,22 @@ func (suite *PouchCreateSuite) TestCreateName(c *check.C) {
 	}
 }
 
+// TestCreateNameByImageID is to verify the correctness of creating contaier with specified name by image id.
+func (suite *PouchCreateSuite) TestCreateNameByImageID(c *check.C) {
+	name := "create-normal-by-image-id"
+
+	res := command.PouchRun("images")
+	res.Assert(c, icmd.Success)
+	imageID := imagesListToKV(res.Combined())[busyboxImage][0]
+
+	res = command.PouchRun("create", "--name", name, imageID)
+
+	res.Assert(c, icmd.Success)
+	if out := res.Combined(); !strings.Contains(out, name) {
+		c.Fatalf("unexpected output %s expected %s\n", out, name)
+	}
+}
+
 // TestCreateDuplicateContainerName is to verify duplicate container names.
 func (suite *PouchCreateSuite) TestCreateDuplicateContainerName(c *check.C) {
 	name := "duplicate"
@@ -137,6 +153,103 @@ func (suite *PouchCreateSuite) TestCreateWithSysctls(c *check.C) {
 	if result.HostConfig.Sysctls["net.ipv4.ip_forward"] != "1" {
 		c.Errorf("failed to set sysctl: %s", sysctl)
 	}
+}
+
+// TestCreateWithAppArmor tries to test create a container with security option AppArmor.
+func (suite *PouchCreateSuite) TestCreateWithAppArmor(c *check.C) {
+	appArmor := "apparmor=unconfined"
+	name := "create-apparmor"
+
+	res := command.PouchRun("create", "--name", name, "--security-opt", appArmor, busyboxImage)
+	res.Assert(c, icmd.Success)
+
+	output := command.PouchRun("inspect", name).Stdout()
+
+	result := &types.ContainerJSON{}
+	if err := json.Unmarshal([]byte(output), result); err != nil {
+		c.Errorf("failed to decode inspect output: %v", err)
+	}
+	c.Assert(result.HostConfig.SecurityOpt, check.NotNil)
+
+	exist := false
+	for _, opt := range result.HostConfig.SecurityOpt {
+		if opt == appArmor {
+			exist = true
+		}
+	}
+	if !exist {
+		c.Errorf("failed to set AppArmor in security-opt")
+	}
+}
+
+// TestCreateWithSeccomp tries to test create a container with security option seccomp.
+func (suite *PouchCreateSuite) TestCreateWithSeccomp(c *check.C) {
+	seccomp := "seccomp=unconfined"
+	name := "create-seccomp"
+
+	res := command.PouchRun("create", "--name", name, "--security-opt", seccomp, busyboxImage)
+	res.Assert(c, icmd.Success)
+
+	output := command.PouchRun("inspect", name).Stdout()
+
+	result := &types.ContainerJSON{}
+	if err := json.Unmarshal([]byte(output), result); err != nil {
+		c.Errorf("failed to decode inspect output: %v", err)
+	}
+	c.Assert(result.HostConfig.SecurityOpt, check.NotNil)
+
+	exist := false
+	for _, opt := range result.HostConfig.SecurityOpt {
+		if opt == seccomp {
+			exist = true
+		}
+	}
+	if !exist {
+		c.Errorf("failed to set seccomp in security-opt")
+	}
+}
+
+// TestCreateWithCapability tries to test create a container with capability.
+func (suite *PouchCreateSuite) TestCreateWithCapability(c *check.C) {
+	capability := "NET_ADMIN"
+	name := "create-capability"
+
+	res := command.PouchRun("create", "--name", name, "--cap-add", capability, busyboxImage, "brctl", "addbr", "foobar")
+	res.Assert(c, icmd.Success)
+
+	output := command.PouchRun("inspect", name).Stdout()
+
+	result := &types.ContainerJSON{}
+	if err := json.Unmarshal([]byte(output), result); err != nil {
+		c.Errorf("failed to decode inspect output: %v", err)
+	}
+	c.Assert(result.HostConfig.CapAdd, check.NotNil)
+
+	exist := false
+	for _, cap := range result.HostConfig.CapAdd {
+		if cap == capability {
+			exist = true
+		}
+	}
+	if !exist {
+		c.Errorf("failed to set capability")
+	}
+}
+
+// TestCreateWithPrivilege tries to test create a container with privilege.
+func (suite *PouchCreateSuite) TestCreateWithPrivilege(c *check.C) {
+	name := "create-privilege"
+
+	res := command.PouchRun("create", "--name", name, "--privileged", busyboxImage, "brctl", "addbr", "foobar")
+	res.Assert(c, icmd.Success)
+
+	output := command.PouchRun("inspect", name).Stdout()
+
+	result := &types.ContainerJSON{}
+	if err := json.Unmarshal([]byte(output), result); err != nil {
+		c.Errorf("failed to decode inspect output: %v", err)
+	}
+	c.Assert(result.HostConfig.Privileged, check.Equals, true)
 }
 
 // TestCreateEnableLxcfs tries to test create a container with lxcfs.

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 
@@ -30,11 +31,16 @@ type container struct {
 	memorySwappiness     int64
 	devices              []string
 	enableLxcfs          bool
+	privileged           bool
 	restartPolicy        string
 	ipcMode              string
 	pidMode              string
 	utsMode              string
 	sysctls              []string
+	networks             []string
+	securityOpt          []string
+	capAdd               []string
+	capDrop              []string
 	blkioWeight          uint16
 	blkioWeightDevice    WeightDevice
 	blkioDeviceReadBps   ThrottleBpsDevice
@@ -83,6 +89,27 @@ func (c *container) config() (*types.ContainerCreateConfig, error) {
 		return nil, err
 	}
 
+	var networkMode string
+	if len(c.networks) == 0 {
+		networkMode = "bridge"
+	}
+	networkingConfig := &types.NetworkingConfig{
+		EndpointsConfig: map[string]*types.EndpointSettings{},
+	}
+	for _, network := range c.networks {
+		name, ip, err := parseNetwork(network)
+		if err != nil {
+			return nil, err
+		}
+
+		networkingConfig.EndpointsConfig[name] = &types.EndpointSettings{
+			IPAddress: ip,
+			IPAMConfig: &types.EndpointIPAMConfig{
+				IPV4Address: ip,
+			},
+		}
+	}
+
 	config := &types.ContainerCreateConfig{
 		ContainerConfig: types.ContainerConfig{
 			Tty:        c.tty,
@@ -115,12 +142,19 @@ func (c *container) config() (*types.ContainerCreateConfig, error) {
 				BlkioDeviceWriteIOps: c.blkioDeviceWriteIOps.value(),
 			},
 			EnableLxcfs:   c.enableLxcfs,
+			Privileged:    c.privileged,
 			RestartPolicy: restartPolicy,
 			IpcMode:       c.ipcMode,
 			PidMode:       c.pidMode,
 			UTSMode:       c.utsMode,
 			Sysctls:       sysctls,
+			SecurityOpt:   c.securityOpt,
+			NetworkMode:   networkMode,
+			CapAdd:        c.capAdd,
+			CapDrop:       c.capDrop,
 		},
+
+		NetworkingConfig: networkingConfig,
 	}
 
 	return config, nil
@@ -228,4 +262,34 @@ func parseRestartPolicy(restartPolicy string) (*types.RestartPolicy, error) {
 	}
 
 	return policy, nil
+}
+
+func parseNetwork(network string) (string, string, error) {
+	var (
+		name string
+		ip   string
+	)
+	if network == "" {
+		return "", "", fmt.Errorf("invalid network: cannot be empty")
+	}
+	arr := strings.Split(network, ":")
+	switch len(arr) {
+	case 1:
+		if ipaddr := net.ParseIP(arr[0]); ipaddr != nil {
+			ip = arr[0]
+		} else {
+			name = arr[0]
+		}
+	default:
+		name = arr[0]
+		ip = arr[1]
+	}
+
+	if ip != "" {
+		if ipaddr := net.ParseIP(ip); ipaddr == nil {
+			return "", "", fmt.Errorf("invalid network ip: %s", ip)
+		}
+	}
+
+	return name, ip, nil
 }

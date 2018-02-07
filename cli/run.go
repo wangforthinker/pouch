@@ -6,8 +6,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/alibaba/pouch/pkg/reference"
-
 	"github.com/spf13/cobra"
 )
 
@@ -66,11 +64,16 @@ func (rc *RunCommand) addFlags() {
 	flagSet.StringVar(&rc.memorySwap, "memory-swap", "", "Container swap limit")
 	flagSet.StringSliceVarP(&rc.devices, "device", "", nil, "Add a host device to the container")
 	flagSet.BoolVar(&rc.enableLxcfs, "enableLxcfs", false, "Enable lxcfs")
+	flagSet.BoolVar(&rc.privileged, "privileged", false, "Give extended privileges to the container")
 	flagSet.StringVar(&rc.restartPolicy, "restart", "", "Restart policy to apply when container exits")
 	flagSet.StringVar(&rc.ipcMode, "ipc", "", "IPC namespace to use")
 	flagSet.StringVar(&rc.pidMode, "pid", "", "PID namespace to use")
 	flagSet.StringVar(&rc.utsMode, "uts", "", "UTS namespace to use")
 	flagSet.StringSliceVar(&rc.sysctls, "sysctl", nil, "Sysctl options")
+	flagSet.StringSliceVar(&rc.networks, "net", nil, "Set networks to container")
+	flagSet.StringSliceVar(&rc.securityOpt, "security-opt", nil, "Security Options")
+	flagSet.StringSliceVar(&rc.capAdd, "cap-add", nil, "Add Linux capabilities")
+	flagSet.StringSliceVar(&rc.capDrop, "cap-drop", nil, "Drop Linux capabilities")
 	flagSet.Uint16Var(&rc.blkioWeight, "blkio-weight", 0, "Block IO (relative weight), between 10 and 1000, or 0 to disable")
 	flagSet.Var(&rc.blkioWeightDevice, "blkio-weight-device", "Block IO weight (relative device weight)")
 	flagSet.Var(&rc.blkioDeviceReadBps, "device-read-bps", "Limit read rate (bytes per second) from a device")
@@ -90,19 +93,14 @@ func (rc *RunCommand) runRun(args []string) error {
 		return fmt.Errorf("failed to run container: %v", err)
 	}
 
-	ref, err := reference.Parse(args[0])
-	if err != nil {
-		return fmt.Errorf("failed to run container: %v", err)
-	}
-
-	config.Image = ref.String()
+	config.Image = args[0]
 	if len(args) > 1 {
 		config.Cmd = args[1:]
 	}
 	containerName := rc.name
 
 	apiClient := rc.cli.Client()
-	result, err := apiClient.ContainerCreate(config.ContainerConfig, config.HostConfig, containerName)
+	result, err := apiClient.ContainerCreate(config.ContainerConfig, config.HostConfig, config.NetworkingConfig, containerName)
 	if err != nil {
 		return fmt.Errorf("failed to run container: %v", err)
 	}

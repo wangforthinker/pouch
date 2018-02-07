@@ -270,9 +270,8 @@ func (c *CriManager) CreateContainer(ctx context.Context, r *runtime.CreateConta
 	}
 	createConfig := &apitypes.ContainerCreateConfig{
 		ContainerConfig: apitypes.ContainerConfig{
-			// TODO: wait for them to be fully supported.
-			// Entrypoint:		config.Command,
-			// Cmd:			config.Args,
+			// TODO: maybe we should ditinguish cmd and entrypoint more clearly.
+			Cmd:        config.Command,
 			Env:        generateEnvList(config.GetEnvs()),
 			Image:      image,
 			WorkingDir: config.WorkingDir,
@@ -287,7 +286,10 @@ func (c *CriManager) CreateContainer(ctx context.Context, r *runtime.CreateConta
 		},
 		NetworkingConfig: &apitypes.NetworkingConfig{},
 	}
-	c.updateCreateConfig(createConfig, config, sandboxConfig, podSandboxID)
+	err := c.updateCreateConfig(createConfig, config, sandboxConfig, podSandboxID)
+	if err != nil {
+		return nil, err
+	}
 
 	// TODO: devices and security option configurations.
 
@@ -602,17 +604,19 @@ func (c *CriManager) ImageStatus(ctx context.Context, r *runtime.ImageStatusRequ
 func (c *CriManager) PullImage(ctx context.Context, r *runtime.PullImageRequest) (*runtime.PullImageResponse, error) {
 	// TODO: authentication.
 	imageRef := r.GetImage().GetImage()
-	ref, err := reference.Parse(imageRef)
+
+	namedRef, err := reference.ParseNamedReference(imageRef)
+	if err != nil {
+		return nil, err
+	}
+	taggedRef := reference.WithDefaultTagIfMissing(namedRef).(reference.Tagged)
+
+	err = c.ImageMgr.PullImage(ctx, taggedRef.Name(), taggedRef.Tag(), bytes.NewBuffer([]byte{}))
 	if err != nil {
 		return nil, err
 	}
 
-	err = c.ImageMgr.PullImage(ctx, ref.Name, ref.Tag, bytes.NewBuffer([]byte{}))
-	if err != nil {
-		return nil, err
-	}
-
-	imageInfo, err := c.ImageMgr.GetImage(ctx, ref.String())
+	imageInfo, err := c.ImageMgr.GetImage(ctx, taggedRef.String())
 	if err != nil {
 		return nil, err
 	}

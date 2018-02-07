@@ -156,6 +156,12 @@
 			"revisionTime": "2017-12-05T05:15:20Z"
 		},
 		{
+			"checksumSHA1": "IqqBK06hDnn7N1nd9YT9mwrr96w=",
+			"path": "github.com/containerd/containerd/contrib/seccomp",
+			"revision": "89623f28b87a6004d4b785663257362d1658a729",
+			"revisionTime": "2017-12-05T05:15:20Z"
+		},
+		{
 			"checksumSHA1": "5q0XKUS32i7Ya0eRUaLEKGTdALw=",
 			"path": "github.com/containerd/containerd/dialer",
 			"revision": "89623f28b87a6004d4b785663257362d1658a729",
@@ -354,6 +360,12 @@
 			"path": "github.com/davecgh/go-spew/spew",
 			"revision": "2aa2c176b9dab406a6970f6a55f513e8a8c8b18f",
 			"revisionTime": "2017-08-14T20:04:35Z"
+		},
+		{
+			"checksumSHA1": "ttq59lEvvhcPqd+hDXxclaIXQQs=",
+			"path": "github.com/docker/docker/daemon/caps",
+			"revision": "53a58da551e961b3710bbbdfabbc162c3f5f30f6",
+			"revisionTime": "2018-01-31T23:13:00Z"
 		},
 		{
 			"checksumSHA1": "Oq8DJr2mCWo5McNwdMFVwBsieXQ=",
@@ -709,6 +721,12 @@
 			"path": "github.com/stretchr/testify/assert",
 			"revision": "2b8ed96d2a422bf205adcdfa05272dc12c81613b",
 			"revisionTime": "2017-11-08T19:22:26Z"
+		},
+		{
+			"checksumSHA1": "PgEklGW56c5RLHqQhORxt6jS3fY=",
+			"path": "github.com/syndtr/gocapability/capability",
+			"revision": "db04d3cc01c8b54962a58ec7e491717d06cfcc16",
+			"revisionTime": "2017-07-04T07:02:18Z"
 		},
 		{
 			"checksumSHA1": "AHk1Y+L/rkf1jKAmqttDefEWeJw=",
